@@ -1,11 +1,7 @@
-# READMINE: Suggested template for software READMEs
+# Redis in C++
 
-This is an example README file demonstrating a suggested structure for README files of software projects on GitHub.  You can copy this [`README.md`](https://raw.githubusercontent.com/mhucka/readmine/main/README.md) file into your project repository and edit the text as needed.
+This is an educational project to build redis from scratch.
 
-[![License](https://img.shields.io/badge/License-CC0-lightgray.svg?style=flat-square)](https://creativecommons.org/publicdomain/zero/1.0/)
-[![Latest release](https://img.shields.io/github/v/release/mhucka/readmine.svg?style=flat-square&color=b44e88&label=Latest%20release)](https://github.com/mhucka/readmine/releases)
-[![DOI](http://img.shields.io/badge/DOI-10.5281%2fzenodo.10633361-blue.svg?style=flat-square)](https://zenodo.org/records/10633361)
-[![Mentioned in Awesome Awesome README](https://awesome.re/mentioned-badge-flat.svg)](https://github.com/matiassingers/awesome-readme)
 
 
 ## Table of contents
@@ -45,7 +41,7 @@ TODO
 
 ## Known issues and limitations
 
-In this section, summarize any notable issues and/or limitations of your software. If none are known yet, this section can be omitted (and don't forget to remove the corresponding entry in the [Table of Contents](#table-of-contents) too); alternatively, you can leave this section in place and write something along the lines of "none are known at this time".
+TODO
 
 
 ## Acknowledgments
