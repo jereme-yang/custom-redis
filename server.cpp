@@ -18,14 +18,26 @@
 static void msg(const char* msg) {
     fprintf(stderr, "%s\n", msg);
 }
+
 static void msg_errno(const char* msg) {
     fprintf(stderr, "[errno: %d] %s\n", errno, msg);
 }
+
 static void die(const char* msg) {
     fprintf(stderr, "[%d] %s\n", errno, msg);
     abort();
 }
 
+// append to the back
+static void
+buf_append(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
+    buf.insert(buf.end(), data, data + len);
+}
+
+// remove from the front
+static void buf_consume(std::vector<uint8_t> &buf, size_t n) {
+    buf.erase(buf.begin(), buf.begin() + n);
+}
 
 
 // Simple echo handler for demonstration
@@ -41,6 +53,8 @@ void do_read_write(int connfd) {
     char wbuf[] = "world";
     write(connfd, wbuf, sizeof(wbuf));
 }
+
+const size_t k_max_msg = 32 << 20;  // likely larger than the kernel buffer
 
 /*
 This is necessary for event looping because we aren't blocking
@@ -84,7 +98,20 @@ Conn* handle_accept(int fd, std::vector<Conn*>& fd2conn) {
 
 
 Conn* handle_read(Conn* conn) {
-    // TODO: implement
+    // 1. do non-blocking read
+    uint8_t buf[64 * 1024] = {}; // 64k buffer
+    ssize_t rv = read(conn->fd, buf, sizeof(buf)); // note: this only reads avail.. data
+    // recall that sockets fill up the buffer as data arrives
+    if (rv <= 0) {
+        // handle IO error (r < 0) or EOF (r == 0)
+        conn->want_close = true; // close the connection
+    }
+
+    // 2. add new data to the Conn:incoming buffer
+    buf_append(conn->incoming, buf, rv);
+    // 3. Try to parse the accummulating buffer
+    // 4. process the parsed data
+    // remove the message from the buffer
     return;
 }
 
@@ -95,6 +122,37 @@ Conn* handle_write(Conn* conn) {
 
 static void fd_set_nb(int fd) {
     fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+}
+
+/*
+handle a request. if there is enough in the buffer, it will
+do something. Otherwise, it will wait for future iteration
+*/
+static bool try_one_request(Conn* conn) {
+    // 3. try to parse the acumulating buffer
+    // if the header isn't complete, return false
+    if (conn->incoming.size() < 4) {
+        return false; // not enough data to parse
+    }
+
+    uint32_t len = 0;
+    memcpy(&len, conn->incoming.data(), sizeof(len));
+    if (len > k_max_msg) { // protocol error
+        conn->want_close = true; // close the connection on error
+        return false;
+    }
+
+    const uint8_t *request = &conn->incoming[4];
+
+    // 4. process the parsed msg
+    // ...
+    // echo the response back
+    buf_append(conn->outgoing, (const uint8_t*)&len, 4);
+    buf_append(conn->outgoing, request, len);
+
+    // 5. remove the message from conn:incoming
+    buf_consume(conn->incoming, 4 + len);
+    return true; // successfully processed a request
 }
 
 int main() {
