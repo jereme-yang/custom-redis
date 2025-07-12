@@ -97,6 +97,13 @@ int main() {
         poll_args.clear();
 
         // put the listening socket in the poll arguments
+        /*
+        struct pollfd {
+            int   fd;
+            short events;   // request: want to read, write, or both?
+            short revents;  // returned: can read? can write?
+        };
+        */
         struct pollfd pfd = {fd, POLLIN, 0};
         poll_args.push_back(pfd);
 
@@ -121,13 +128,6 @@ int main() {
         // wait for readiness
         // poll takes in a list of fds the program wants to do IO on
         // it returns when one of the fds is ready for IO
-        /*
-        struct pollfd {
-            int   fd;
-            short events;   // request: want to read, write, or both?
-            short revents;  // returned: can read? can write?
-        };
-        */
         int rv = poll(poll_args.data(), (nfds_t)poll_args.size(), -1);
         if (rv < 0 && errno != EINTR) {
             continue;
