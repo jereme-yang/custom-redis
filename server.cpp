@@ -26,8 +26,6 @@ void do_read_write(int connfd) {
 int main() {
 	// Obtain socket handle
 	int fd = socket(AF_INET, SOCK_STREAM, 0);
-	// Obtain socket handle
-	int fd = socket(AF_INET, SOCK_STREAM, 0);
 
 	// Set socket options
 	int val = 1;
