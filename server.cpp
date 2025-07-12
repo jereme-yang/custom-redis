@@ -62,9 +62,39 @@ struct Conn {
     std::vector<uint8_t> outgoing; // buffers generated data that are written to the socket
 };
 
+/*
+make accept non-blocking
+*/
 Conn* handle_accept(int fd, std::vector<Conn*>& fd2conn) {
+    // accept a connection
+    struct sockaddr_in client_addr = {};
+    socklen_t addr_len = sizeof(client_addr);
+    int connfd = accept(fd, (struct sockaddr*)&client_addr, &addr_len);
+    if (connfd < 0) {
+        return NULL;
+    }
+    // set the connection to non-blocking
+    fd_set_nb(connfd);
+    // create a new connection state
+    Conn* conn = new Conn();
+    conn->fd = connfd;
+    conn->want_read = true; // we want to read from the socket
+    return conn;
+}
+
+
+Conn* handle_read(Conn* conn) {
     // TODO: implement
     return;
+}
+
+Conn* handle_write(Conn* conn) {
+    // TODO: implement
+    return;
+}
+
+static void fd_set_nb(int fd) {
+    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
 }
 
 int main() {
@@ -149,6 +179,30 @@ int main() {
                     fd2conn.resize(conn->fd + 1);
                 }
                 fd2conn[conn->fd] = conn;
+            }
+        }
+
+        // the rest of the fds are connections
+        // go through the fds our poll API returned
+        for (size_t i = 1; i < poll_args.size(); ++i) {
+            uint32_t ready = poll_args[i].revents;
+
+            // map returned fd to Conn state holder
+            Conn* conn = fd2conn[poll_args[i].fd];
+
+            // apply correct application logic
+            if (ready & POLLIN) {
+                handle_read(conn);
+            }
+            if (ready & POLLOUT) {
+                handle_write(conn);
+            }
+
+            // close the socket from socket error or application intent
+            if ((ready & POLLERR) || (conn->want_close)) {
+                (void)close(conn->fd); // close the socket API
+                fd2conn[conn->fd] = nullptr; // remove from fd2conn mapping
+                delete conn; // free the connection state
             }
         }
 
