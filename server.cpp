@@ -1,15 +1,31 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
+// stdlib
+#include <assert.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+#include <errno.h>
+// system
+#include <fcntl.h>
+#include <poll.h>
 #include <unistd.h>
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <netinet/ip.h>
+// C++
 #include <vector>
 
-void die(const char* msg) {
-    perror(msg);
-    exit(1);
+static void msg(const char* msg) {
+    fprintf(stderr, "%s\n", msg);
 }
+static void msg_errno(const char* msg) {
+    fprintf(stderr, "[errno: %d] %s\n", errno, msg);
+}
+static void die(const char* msg) {
+    fprintf(stderr, "[%d] %s\n", errno, msg);
+    abort();
+}
+
 
 
 // Simple echo handler for demonstration
