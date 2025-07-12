@@ -15,6 +15,7 @@
 // C++
 #include <vector>
 
+
 static void msg(const char* msg) {
     fprintf(stderr, "%s\n", msg);
 }
@@ -38,7 +39,6 @@ buf_append(std::vector<uint8_t> &buf, const uint8_t *data, size_t len) {
 static void buf_consume(std::vector<uint8_t> &buf, size_t n) {
     buf.erase(buf.begin(), buf.begin() + n);
 }
-
 
 // Simple echo handler for demonstration
 void do_read_write(int connfd) {
