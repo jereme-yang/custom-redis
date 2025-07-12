@@ -62,6 +62,10 @@ struct Conn {
     std::vector<uint8_t> outgoing; // buffers generated data that are written to the socket
 };
 
+Conn* handle_accept(int fd, std::vector<Conn*>& fd2conn) {
+    // TODO: implement
+    return;
+}
 
 int main() {
 	// Obtain socket handle
@@ -136,7 +140,17 @@ int main() {
             die("poll() failed");
         }
 
-        
+        // handle the listening (accepting) socket
+        if (poll_args[0].revents) {
+            if (Conn *conn = handle_accept(fd, fd2conn)) {
+                
+                // put it into the fd2conn mapping
+                if (fd2conn.size() <= (size_t)conn->fd) {
+                    fd2conn.resize(conn->fd + 1);
+                }
+                fd2conn[conn->fd] = conn;
+            }
+        }
 
 
         struct sockaddr_in client_addr = {};
