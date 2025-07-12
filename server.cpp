@@ -4,10 +4,13 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <vector>
+
 void die(const char* msg) {
     perror(msg);
     exit(1);
 }
+
 
 // Simple echo handler for demonstration
 void do_read_write(int connfd) {
@@ -22,6 +25,27 @@ void do_read_write(int connfd) {
     char wbuf[] = "world";
     write(connfd, wbuf, sizeof(wbuf));
 }
+
+/*
+This is necessary for event looping because we aren't blocking
+for read/write operations. We need to keep track of the state
+of a connection if it lasts multiple loop iterations.
+This is a simple structure to hold the connection state.
+*/
+struct Conn {
+    // socket file descriptor
+    int fd;
+
+    // application's intention
+    bool want_read = false; // represents the fd list for the readiness API
+    bool want_write = false; // represents the fd list for the readiness API
+    bool want_close = false; // tells the event loop to close the connection
+
+    // buffered input and output
+    std::vector<uint8_t> incoming; // buffers data for the socket for the parser
+    std::vector<uint8_t> outgoing; // buffers generated data that are written to the socket
+};
+
 
 int main() {
 	// Obtain socket handle
