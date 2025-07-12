@@ -97,7 +97,7 @@ Conn* handle_accept(int fd, std::vector<Conn*>& fd2conn) {
 }
 
 
-Conn* handle_read(Conn* conn) {
+static void handle_read(Conn* conn) {
     // 1. do non-blocking read
     uint8_t buf[64 * 1024] = {}; // 64k buffer
     ssize_t rv = read(conn->fd, buf, sizeof(buf)); // note: this only reads avail.. data
@@ -112,12 +112,29 @@ Conn* handle_read(Conn* conn) {
     // 3. Try to parse the accummulating buffer
     // 4. process the parsed data
     // remove the message from the buffer
+    try_one_request(conn);
+    if (conn->outgoing.size() > 0) {
+        conn->want_read = false; // we have data to write
+        conn->want_write = true; // we have data to write
+    } // else: keep reading
     return;
 }
 
-Conn* handle_write(Conn* conn) {
-    // TODO: implement
-    return;
+static void handle_write(Conn* conn) {
+    assert(conn->outgoing.size() > 0);
+    ssize_t rv = write(conn->fd, conn->outgoing.data(), conn->outgoing.size());
+    if (rv < 0) {
+        conn->want_close = true; // close the connection on error
+        return;
+    } 
+
+    // remove written data from the outgoing buffer
+    buf_consume(conn->outgoing, (size_t)rv);
+    
+    if (conn->outgoing.size() == 0) {
+        conn->want_write = false; // no more data to write
+        conn->want_read = true; // we can read more data
+    } // else: keep writing
 }
 
 static void fd_set_nb(int fd) {
