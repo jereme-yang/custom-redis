@@ -218,6 +218,9 @@ int main() {
     int rv = bind(fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
     if (rv) { die("bind()"); }
 
+    // set the listen fd to non-blocking mode
+    fd_set_nb(fd);
+
     // Listen for incoming connections
     rv = listen(fd, SOMAXCONN);
     if (rv) { die("listen()"); }
@@ -229,7 +232,7 @@ int main() {
     std::vector<Conn*> fd2conn;
 
     std::vector<struct pollfd> poll_args;
-    // Accept a connection
+    // the event loop
     while (true) {
         // Prepare poll arguments
         poll_args.clear();
