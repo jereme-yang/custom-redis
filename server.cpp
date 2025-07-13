@@ -15,7 +15,6 @@
 // C++
 #include <vector>
 
-
 static void msg(const char* msg) {
     fprintf(stderr, "%s\n", msg);
 }
@@ -87,6 +86,12 @@ Conn* handle_accept(int fd, std::vector<Conn*>& fd2conn) {
     if (connfd < 0) {
         return NULL;
     }
+    uint32_t ip = client_addr.sin_addr.s_addr;
+    fprintf(stderr, "new client from %u.%u.%u.%u:%u\n",
+        ip & 255, (ip >> 8) & 255, (ip >> 16) & 255, ip >> 24,
+        ntohs(client_addr.sin_port)
+    );
+
     // set the connection to non-blocking
     fd_set_nb(connfd);
     // create a new connection state
@@ -101,10 +106,24 @@ static void handle_read(Conn* conn) {
     // 1. do non-blocking read
     uint8_t buf[64 * 1024] = {}; // 64k buffer
     ssize_t rv = read(conn->fd, buf, sizeof(buf)); // note: this only reads avail.. data
-    // recall that sockets fill up the buffer as data arrives
-    if (rv <= 0) {
-        // handle IO error (r < 0) or EOF (r == 0)
-        conn->want_close = true; // close the connection
+    if (rv < 0 && errno == EAGAIN) {
+        return; // actually not ready
+    }
+    // handle IO error
+    if (rv < 0) {
+        msg_errno("read() error");
+        conn->want_close = true;
+        return; // want close
+    }
+    // handle EOF
+    if (rv == 0) {
+        if (conn->incoming.size() == 0) {
+            msg("client closed");
+        } else {
+            msg("unexpected EOF");
+        }
+        conn->want_close = true;
+        return; // want close
     }
 
     // 2. add new data to the Conn:incoming buffer
@@ -112,17 +131,21 @@ static void handle_read(Conn* conn) {
     // 3. Try to parse the accummulating buffer
     // 4. process the parsed data
     // remove the message from the buffer
-    try_one_request(conn);
+    while(try_one_request(conn)) {}
     if (conn->outgoing.size() > 0) {
         conn->want_read = false; // we have data to write
         conn->want_write = true; // we have data to write
+        return handle_write(conn); // write the data
     } // else: keep reading
-    return;
+
 }
 
 static void handle_write(Conn* conn) {
     assert(conn->outgoing.size() > 0);
-    ssize_t rv = write(conn->fd, conn->outgoing.data(), conn->outgoing.size());
+    ssize_t rv = write(conn->fd, &conn->outgoing[0], conn->outgoing.size());
+    if (rv < 0 && errno == EAGAIN) {
+        return; // actually not ready
+    }
     if (rv < 0) {
         conn->want_close = true; // close the connection on error
         return;
@@ -138,7 +161,20 @@ static void handle_write(Conn* conn) {
 }
 
 static void fd_set_nb(int fd) {
-    fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
+    errno = 0; // clear errno
+    int flags = fcntl(fd, F_GETFL, 0); // grab the current file status for the given fd
+    if (errno) {
+        die("fcntl error");
+        return;
+    }
+
+    flags |= O_NONBLOCK; // make future io operations non-blocking
+    // set the new flags
+    errno = 0;
+    (void)fcntl(fd, F_SETFL, flags);
+    if (errno) {
+        die("fcntl error");
+    }
 }
 
 /*
@@ -152,17 +188,26 @@ static bool try_one_request(Conn* conn) {
         return false; // not enough data to parse
     }
 
+    // message header
     uint32_t len = 0;
     memcpy(&len, conn->incoming.data(), sizeof(len));
     if (len > k_max_msg) { // protocol error
+        msg("protocol error: message too large");
         conn->want_close = true; // close the connection on error
         return false;
+    }
+
+    // message body
+    if (4 + len > conn->incoming.size()) {
+        return false;   // want read
     }
 
     const uint8_t *request = &conn->incoming[4];
 
     // 4. process the parsed msg
-    // ...
+    // got one request, do some application logic
+    printf("client says: len:%d data:%.*s\n",
+        len, len < 100 ? len : 100, request);
     // echo the response back
     buf_append(conn->outgoing, (const uint8_t*)&len, 4);
     buf_append(conn->outgoing, request, len);
