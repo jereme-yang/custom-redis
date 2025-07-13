@@ -39,19 +39,6 @@ static void buf_consume(std::vector<uint8_t> &buf, size_t n) {
     buf.erase(buf.begin(), buf.begin() + n);
 }
 
-// Simple echo handler for demonstration
-void do_read_write(int connfd) {
-    char rbuf[64] = {};
-    ssize_t n = read(connfd, rbuf, sizeof(rbuf));
-    if (n < 0) {
-        perror("read() failed");
-        return;
-    }
-    printf("Received: %s\n", rbuf);
-
-    char wbuf[] = "world";
-    write(connfd, wbuf, sizeof(wbuf));
-}
 
 const size_t k_max_msg = 32 << 20;  // likely larger than the kernel buffer
 
@@ -325,23 +312,7 @@ int main() {
                 delete conn; // free the connection state
             }
         }
-
-
-        struct sockaddr_in client_addr = {};
-        socklen_t addr_len = sizeof(client_addr);
-        int connfd = accept(fd, (struct sockaddr*)&client_addr, &addr_len);
-        if (connfd < 0) {
-            continue; // Continue to accept next connection
-        }
-
-        // Handle the client connection here
-        // For example, read/write data using client_fd
-        do_read_write(connfd);
-        // Close the client socket after handling
-        close(connfd);
     }
-	// Close socket before exiting
-	close(fd);
 
 	return 0;
 }
