@@ -68,6 +68,15 @@ static int32_t send_req(int fd, const uint8_t *text, size_t len) {
     return write_all(fd, wbuf.data(), wbuf.size());
 }
 
+enum {
+    TAG_NIL = 0,    // nil
+    TAG_ERR = 1,    // error code + msg
+    TAG_STR = 2,    // string
+    TAG_INT = 3,    // int64
+    TAG_DBL = 4,    // double
+    TAG_ARR = 5,    // array
+};
+
 static int32_t read_res(int fd) {
     // 4 bytes header
     std::vector<uint8_t> rbuf;
